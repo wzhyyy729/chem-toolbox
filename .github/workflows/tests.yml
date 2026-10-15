@@ -1,0 +1,53 @@
+name: tests
+
+# 每次推送和 PR 都自动跑一遍 87 项断言。
+# 意义：让"测试通过"这件事由 GitHub 自己证明，而不是靠我在 README 里自己说。
+# 运行记录：https://github.com/wzhyyy729/chem-toolbox/actions
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:   # 允许在 Actions 页面手动触发
+
+jobs:
+  self-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows 必测：项目里专门处理过 Windows 控制台 GBK 编码导致的
+        # UnicodeEncodeError，换到别的系统就不会暴露这个问题。
+        # 注意不要在 run 步骤的 name 里写 ${{ }} —— Windows 上跑的是
+        # PowerShell，花括号模板表达式容易踩坑，所以这里 name 用静态文本。
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        exclude:
+          # 非 Windows 系统只测两个版本，省额度；Windows 全版本都测
+          - os: macos-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.12"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show Python version
+        run: python --version
+
+      - name: Run self-test (87 assertions, no pytest needed)
+        run: python -m chem_toolbox.tests
+
+      - name: Smoke-test the CLI entry points
+        run: |
+          python -m chem_toolbox formula "CuSO4.5H2O"
+          python -m chem_toolbox formula "K3[Fe(CN)6]"
+          python -m chem_toolbox solution ph --acid-kind weak-acid --pka 4.76 --conc 0.1
+          python -m chem_toolbox stats fit --file examples/standard_curve.csv --x-col 0 --y-col 1

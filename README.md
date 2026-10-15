@@ -221,6 +221,10 @@ Every expected value can be checked against a textbook, a pharmacopoeia, or by h
 
 Works without pytest.
 
+**Verified automatically**: every push re-runs these assertions on **Ubuntu, Windows and macOS across Python 3.10–3.13** via GitHub Actions — the run history is public at [Actions](https://github.com/wzhyyy729/chem-toolbox/actions). "The tests pass" is GitHub's claim, not mine.
+
+> Windows is deliberately kept in the matrix: the project handles a Windows-specific `UnicodeEncodeError` caused by the console defaulting to GBK when printing Chinese text and symbols like `✓`. That bug is invisible everywhere else.
+
 ---
 
 ## Known limitations
@@ -239,6 +243,9 @@ Documenting the edges is more useful than pretending there are none:
 
 ```
 chem-toolbox/
+├── .github/
+│   └── workflows/
+│       └── tests.yml   CI: 87 assertions on 3 OSes × 4 Python versions
 ├── chem_toolbox/
 │   ├── __init__.py     public API (from chem_toolbox import ...)
 │   ├── __main__.py     CLI: argument parsing and output formatting

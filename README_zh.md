@@ -256,6 +256,10 @@ chem_toolbox 自检测试
 
 不需要 pytest，直接 `python -m chem_toolbox.tests` 就能跑。
 
+**自动验证**：每次推送都会由 GitHub Actions 在 **Ubuntu / Windows / macOS × Python 3.10–3.13** 上重复跑一遍这些断言，运行记录公开可查：[Actions](https://github.com/wzhyyy729/chem-toolbox/actions)。这意味着"测试通过"不是我自己说的，是 GitHub 说的。
+
+> 为什么要专门测 Windows：项目里处理过 Windows 控制台默认 GBK 编码导致的 `UnicodeEncodeError`（打印中文和 `✓` 时会崩）。这类问题只在 Windows 上暴露，所以在 CI 里固定保留 Windows 环境。
+
 ---
 
 ## 已知限制
@@ -274,6 +278,9 @@ chem_toolbox 自检测试
 
 ```
 chem-toolbox/
+├── .github/
+│   └── workflows/
+│       └── tests.yml    CI：三系统 × 四版本 Python 自动跑 87 项断言
 ├── chem_toolbox/
 │   ├── __init__.py     对外接口（方便 from chem_toolbox import ...）
 │   ├── __main__.py     命令行界面：参数解析与结果打印
