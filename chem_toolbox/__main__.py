@@ -1,11 +1,10 @@
 """chem_toolbox —— 化学专业学生的日常计算工具箱。
 
-四个子命令
+三个子命令
 ----------
 formula   解析分子式：摩尔质量、元素质量分数、不饱和度
 solution  溶液配制、稀释、pH（强/弱酸弱碱）、朗伯-比尔定律
 stats     实验数据统计：均值、标准差、线性拟合、R²
-peak      谱图找峰：峰位、峰高、半高宽（FWHM）
 
 所有计算只用 Python 标准库，无需安装任何第三方包。
 
@@ -14,7 +13,6 @@ peak      谱图找峰：峰位、峰高、半高宽（FWHM）
 python -m chem_toolbox formula "CuSO4.5H2O"
 python -m chem_toolbox solution ph --acid-kind weak --pka 4.76 --conc 0.1
 python -m chem_toolbox stats fit --file data.csv --x-col 0 --y-col 1
-python -m chem_toolbox peak --file uvvis.csv --x-col 0 --y-col 1
 """
 
 from __future__ import annotations
@@ -433,75 +431,13 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
-# 子命令四：peak
-# ---------------------------------------------------------------------------
-
-def cmd_peak(args: argparse.Namespace) -> int:
-    rows = _load_table(args.file, args.delimiter)
-    xs = _column(rows, args.x_col, "x 列")
-    ys = _column(rows, args.y_col, "y 列")
-
-    # 保证 x 递增（有些仪器是从高波长往低波长扫的）
-    if xs[0] > xs[-1]:
-        xs = xs[::-1]
-        ys = ys[::-1]
-
-    peaks, noise = core.find_peaks(
-        xs, ys, threshold_sigma=args.sigma, min_prominence=args.min_prominence
-    )
-
-    if args.json:
-        _emit(
-            {
-                "action": "peak",
-                "n_points": len(xs),
-                "noise_level": noise,
-                "peak_count": len(peaks),
-                "peaks": [
-                    {
-                        "position": p.position,
-                        "height": p.height,
-                        "prominence": p.prominence,
-                        "snr": p.prominence / noise if noise > 0 else None,
-                        "fwhm": p.fwhm,
-                    }
-                    for p in peaks
-                ],
-            },
-            True,
-        )
-        return 0
-
-    print(f"数据点数        : {len(xs)}")
-    print(f"噪声水平估计    : {_fmt(noise)}")
-    print(f"判定阈值        : {_fmt(args.sigma)} × 噪声 = {_fmt(args.sigma * noise)}")
-    print()
-    if not peaks:
-        print("未找到满足条件的峰。可尝试降低 --sigma（如 --sigma 2）或指定 --min-prominence。")
-        return 0
-
-    print(f"共找到 {len(peaks)} 个峰")
-    print(f"  {'序号':<5}{'峰位':>12}{'峰高':>14}{'凸出高度':>14}{'信噪比':>10}{'半高宽':>12}")
-    for order, peak in enumerate(sorted(peaks, key=lambda p: -p.prominence), start=1):
-        snr = peak.prominence / noise if noise > 0 else float("nan")
-        print(
-            f"  {order:<5}{_fmt(peak.position, 3):>12}{_fmt(peak.height):>14}"
-            f"{_fmt(peak.prominence):>14}{_fmt(snr, 1):>10}{_fmt(peak.fwhm, 3):>12}"
-        )
-    print()
-    print("提示：按凸出高度从大到小排列；半高宽显示 '—' 表示该峰两侧没有降到半高，")
-    print("      通常是峰太宽或落在数据边界上。")
-    return 0
-
-
-# ---------------------------------------------------------------------------
 # 命令行入口
 # ---------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="chem_toolbox",
-        description="化学专业学生的日常计算工具箱（分子式 / 溶液 / 数据 / 谱图）",
+        description="化学专业学生的日常计算工具箱（分子式 / 溶液 / 数据）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "示例：\n"
@@ -509,7 +445,6 @@ def build_parser() -> argparse.ArgumentParser:
             "  python -m chem_toolbox formula \"Ca(OH)2\"     注意 Windows 下给括号加引号\n"
             "  python -m chem_toolbox solution ph --acid-kind weak-acid --pka 4.76 --conc 0.1\n"
             "  python -m chem_toolbox stats fit --file data.csv --x-col 0 --y-col 1\n"
-            "  python -m chem_toolbox peak --file uvvis.csv --x-col 0 --y-col 1\n"
         ),
     )
     parser.add_argument("--version", action="version", version=f"chem_toolbox {__version__}")
@@ -587,18 +522,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_fit.add_argument("--label-y", help="y 轴物理量名称")
     p_fit.add_argument("--json", action="store_true")
     p_fit.set_defaults(func=cmd_stats)
-
-    # peak
-    p_peak = subparsers.add_parser("peak", help="谱图找峰（峰位 / 峰高 / 半高宽）")
-    p_peak.add_argument("--file", required=True, help="谱图数据文件（两列：x y）")
-    p_peak.add_argument("--x-col", type=int, default=0, help="x 列号，从 0 开始")
-    p_peak.add_argument("--y-col", type=int, default=1, help="y 列号，从 0 开始")
-    p_peak.add_argument("--sigma", type=float, default=3.0,
-                        help="判定阈值：峰凸出高度需达到几倍噪声（默认 3）")
-    p_peak.add_argument("--min-prominence", type=float, help="额外的绝对凸出高度下限")
-    p_peak.add_argument("--delimiter", help="自定义分隔符")
-    p_peak.add_argument("--json", action="store_true")
-    p_peak.set_defaults(func=cmd_peak)
 
     return parser
 

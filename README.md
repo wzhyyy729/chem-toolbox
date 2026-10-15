@@ -4,14 +4,16 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Dependencies](https://img.shields.io/badge/dependencies-none-3FB950)](#installation)
-[![Tests](https://img.shields.io/badge/tests-78%20passed-3FB950)](#self-test)
+[![Tests](https://img.shields.io/badge/tests-87%20passed-3FB950)](#self-test)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Four kinds of calculations a chemistry student does every week, bundled into one command-line tool: **formula analysis, solution preparation and pH, lab-data statistics and curve fitting, and spectral peak finding**.
+Three kinds of calculations a chemistry student does every week, bundled into one command-line tool: **formula analysis, solution preparation and pH, and lab-data statistics with curve fitting**.
 
 Built on the **Python standard library only** — no third-party dependencies, nothing to `pip install`. Copy the folder onto any machine with Python and it runs.
 
-> Started by a second-year chemistry undergraduate. The code was written with AI assistance, but **every formula was verified by hand and is covered by 78 automated assertions**. It is not fancy; the numbers are checked.
+> Started by a second-year chemistry undergraduate. The code was written with AI assistance, but **every formula was verified by hand and is covered by 87 automated assertions**. It is not fancy; the numbers are checked.
+>
+> Focused on **organic chemistry, physical chemistry, pharmacy and materials**. The analytical-chemistry spectral tooling was removed — see [Development notes](#development-notes).
 
 ---
 
@@ -25,6 +27,7 @@ Built on the **Python standard library only** — no third-party dependencies, n
 - [Self-test](#self-test)
 - [Known limitations](#known-limitations)
 - [Project layout](#project-layout)
+- [Development notes](#development-notes)
 
 ---
 
@@ -40,15 +43,18 @@ Built on the **Python standard library only** — no third-party dependencies, n
 | `solution unknown` | Back-calculate an unknown concentration from a calibration curve |
 | `stats summary` | Mean, sample/population standard deviation, standard error, range, median |
 | `stats fit` | Least-squares linear fit: slope, intercept, R², parameter standard errors |
-| `peak` | Peak finding: position, height, signal-to-noise ratio, full width at half maximum |
 
-**Also handled**: nested brackets in formulas (`K3[Fe(CN)6]`), hydrates (`CuSO4.5H2O`), instrument exports with `#` comment lines (skipped automatically), and comma / tab / whitespace delimiters (auto-detected).
+**Also handled**:
+
+- Nested brackets `K3[Fe(CN)6]`, hydrates `CuSO4.5H2O`, leading coefficients `2H2O`
+- **79 elements** in the atomic mass table, covering organic, physical, pharmacy (Pt/Sn/Sb/Te/As/Se) and materials (Zr/Hf/Nb/Ta/W/Mo/rare earths/In/Ga/Ge)
+- Instrument exports with `#` comment lines (skipped automatically) and comma / tab / whitespace delimiters (auto-detected)
 
 ---
 
 ## Why this exists
 
-Lab reports kept demanding the same calculations: how much solid to weigh out, the standard deviation of replicate titrations, the slope and R² of a calibration curve, the peak positions in a UV-Vis spectrum. Typing these into a calculator is slow and easy to get wrong.
+Lab reports kept demanding the same calculations: how much solid to weigh out, the standard deviation of replicate titrations, the slope and R² of a calibration curve. Typing these into a calculator is slow and easy to get wrong.
 
 More importantly, **every one of these formulas has conditions attached**. The strong-acid approximation fails below about 10⁻⁶ mol/L because water's self-ionisation can no longer be ignored. The weak-acid shortcut √(Kₐc) drifts noticeably once the degree of ionisation passes 5%. Plenty of scripts and online calculators hand you a number without mentioning any of that.
 
@@ -89,11 +95,17 @@ $ python -m chem_toolbox formula "K3[Fe(CN)6]"
 Molar mass    : 329.2470 g/mol
 ```
 
-And organics get a real DBE:
+Organics get a real DBE, with sulfur and phosphorus handled correctly:
 
 ```console
 $ python -m chem_toolbox formula "C6H6"
 Degree of unsaturation: 4.0000     # benzene: 3 double bonds + 1 ring
+
+$ python -m chem_toolbox formula "C4H4S"
+Degree of unsaturation: 3.0000     # thiophene: 2 double bonds + 1 ring
+
+$ python -m chem_toolbox formula "P(C6H5)3"
+Degree of unsaturation: 12.0000    # triphenylphosphine: 3 phenyl rings × 4
 ```
 
 ### pH
@@ -133,19 +145,6 @@ intercept b   = 0.0020 ± 0.0024
 R²            = 0.999861
 ```
 
-### Peak finding
-
-```console
-$ python -m chem_toolbox peak --file examples/uvvis_spectrum.csv --x-col 0 --y-col 1
-Noise level   : 0.0199
-Threshold     : 3.0000 × noise = 0.0598
-
-2 peaks found
-  #        position        height     prominence     SNR        FWHM
-  1         455.000        0.4420        0.3080      15.5      37.635
-  2         605.000        0.2850        0.1510       7.6      44.359
-```
-
 ### As a library
 
 ```python
@@ -169,9 +168,14 @@ Add `--json` to any subcommand for machine-readable output.
 
 ### Degree of unsaturation
 
-$$\mathrm{DBE} = \frac{2C + 2 + N - H - X}{2}$$
+$$\mathrm{DBE} = \frac{2C + 2 + N + P - H - X}{2}$$
 
-Oxygen and sulfur do not appear. The formula only holds for **C, H, N, O and halogen** organic compounds — for anything containing a metal (say `K3[Fe(CN)6]`) the tool refuses to compute rather than returning a meaningless number. A non-integer result means the formula is mistyped; a negative one means the composition is impossible.
+Oxygen and sulfur do not appear — both are divalent and contribute nothing to unsaturation.
+
+- The formula only holds for **C, H, N, O, P, S and halogen** organic compounds. Anything containing a metal (say `K3[Fe(CN)6]` or `CuSO4`) gets no answer rather than a meaningless one.
+- **Phosphorus must be counted.** Triphenylphosphine P(C₆H₅)₃ = C₁₈H₁₅P gives (36+2+1−15)/2 = 12, exactly 3 phenyl rings × 4. Omitting phosphorus yields 11.5, a non-integer.
+- **Sulfur must not be counted.** Thiophene C₄H₄S gives (8+2−4)/2 = 3, which is correct; adding sulfur as trivalent would give 3.5.
+- A non-integer result means the formula is mistyped (or the species is a salt); a negative one means the composition is impossible.
 
 ### Monoprotic weak acid, exact solution
 
@@ -189,10 +193,6 @@ With residual standard error $s = \sqrt{SS_{\text{res}}/(n-2)}$:
 
 $$s_k = \frac{s}{\sqrt{\sum (x_i-\bar{x})^2}}, \qquad s_b = s\sqrt{\frac{1}{n} + \frac{\bar{x}^2}{\sum (x_i-\bar{x})^2}}$$
 
-### Peak finding
-
-The **baseline** is the median, not the mean, because peaks drag a mean upward while the median barely moves. **Noise** is estimated robustly from successive differences: $\hat{\sigma} \approx 1.4826 \times \mathrm{median}(|\Delta y|) / \sqrt{2}$, where 1.4826 converts a median absolute deviation into a standard deviation and the $\sqrt{2}$ accounts for differencing doubling the variance. A peak must be a local maximum whose prominence exceeds 3σ. **FWHM** is found by linear interpolation at half prominence; for a Gaussian this equals $2\sqrt{2\ln 2}\,\sigma \approx 2.3548\sigma$.
-
 ---
 
 ## Self-test
@@ -203,19 +203,20 @@ $ python -m chem_toolbox.tests
 chem_toolbox self-test
 ==============================================================
   [pass] Formula parsing
+  [pass] Drug and material molecules
   [pass] Solutions and pH
   [pass] Statistics and fitting
-  [pass] Peak finding
 --------------------------------------------------------------
-78 assertions passed, 0 failed
+87 assertions passed, 0 failed
 ```
 
-Every expected value can be checked against a textbook or by hand — this is not a "it ran without raising" test suite. Examples:
+Every expected value can be checked against a textbook, a pharmacopoeia, or by hand — this is not a "it ran without raising" test suite. Examples:
 
 - Glucose 180.156 g/mol, copper sulfate pentahydrate 249.68 g/mol, `K3[Fe(CN)6]` 329.24 g/mol
-- Benzene DBE = 4, cyclohexane = 1, ethane = 0; metals rejected
+- Aspirin 180.158, paracetamol 151.163, ibuprofen 206.281, cisplatin 300.05
+- Titanium dioxide 79.866, barium titanate 233.192, zirconia 123.222, tungsten carbide 195.85
+- Benzene DBE = 4, cyclohexane = 1, ethane = 0, thiophene = 3, triphenylphosphine = 12, trimethylphosphine = 0; metals rejected
 - 0.1 mol/L acetic acid (pKₐ 4.76) → pH 2.8813 ± 0.0005; 0.1 mol/L ammonia (K_b 1.8×10⁻⁵) → pH 11.1248
-- A synthetic Gaussian peak must yield FWHM within 1.5 of 2.3548σ
 - Invalid input (empty formula, lowercase element symbols, unbalanced brackets, negative concentrations, constant x) must raise, not silently return nonsense
 
 Works without pytest.
@@ -226,10 +227,10 @@ Works without pytest.
 
 Documenting the edges is more useful than pretending there are none:
 
-- The atomic mass table covers roughly 40 common elements (H through Pb). Add a line to `ATOMIC_MASS` in `chem_toolbox/core.py` for anything else.
 - **Monoprotic acids and bases only.** Polyprotic systems such as H₃PO₄ or H₂CO₃ need simultaneous stepwise equilibria.
 - **No activity coefficients** — concentrations stand in for activities, so results drift at high ionic strength (roughly ≥ 0.1 mol/L strong electrolyte).
-- **No peak-shape fitting**, just local maxima with a threshold. The x-axis must be increasing; decreasing series are reversed, but no interpolation is done.
+- **No redox or electrochemistry** (Nernst equation, electrode potentials) yet.
+- **No spectral processing** (peak finding, peak areas, baseline correction). See the development notes below for why.
 - **No plotting**, deliberately: matplotlib would break the zero-dependency property, which is the main reason this tool is easy to run anywhere. Export the CSV to Excel or Origin instead.
 
 ---
@@ -242,16 +243,33 @@ chem-toolbox/
 │   ├── __init__.py     public API (from chem_toolbox import ...)
 │   ├── __main__.py     CLI: argument parsing and output formatting
 │   ├── core.py         pure computation - no printing, no file I/O
-│   └── tests.py        78 assertions, no pytest required
+│   └── tests.py        87 assertions, no pytest required
 ├── examples/
 │   ├── standard_curve.csv    spectrophotometric calibration data
-│   ├── titration.csv         replicate titration volumes
-│   └── uvvis_spectrum.csv    UV-Vis spectrum with two bands
+│   └── titration.csv         replicate titration volumes
 ├── LICENSE
 └── README.md
 ```
 
 `core.py` and `__main__.py` are kept apart on purpose: the algorithms do no input or output, so they can be driven from the CLI, imported into a script, or asserted against directly in tests.
+
+---
+
+## Development notes
+
+**2026-10-16 · v0.1.0**
+
+- First release: formula analysis, solutions and pH, statistics and fitting.
+- The atomic mass table grew from roughly 40 elements to **79**, adding the ones pharmacy and materials work actually needs: Pt, Sn, Sb, Te, As, Se, Zr, Hf, Nb, Ta, W, Mo, rare earths, In, Ga, Ge.
+- **Fixed a chemistry error**: the unsaturation formula was missing phosphorus. Triphenylphosphine P(C₆H₅)₃ returned 11.5 (a non-integer) under the old formula and returns the correct 12 now. Sulfur correctly stays out — including it would make thiophene C₄H₄S come out as 3.5 instead of 3. Tests now lock both behaviours in place.
+- **Removed the spectral peak finder.** An earlier `peak` subcommand (median baseline, 1.4826×MAD robust noise estimate, interpolated FWHM) was implemented and tested, but it belongs to analytical chemistry, which is outside this project's focus on organic, physical, pharmacy and materials. To recover it:
+
+  ```bash
+  git show c5d0484:chem_toolbox/core.py        # the implementation as it was
+  git log --oneline                            # full commit history
+  ```
+
+  The code is preserved in git history and can be restored at any time.
 
 ---
 

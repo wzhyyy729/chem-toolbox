@@ -263,43 +263,6 @@ def test_stats() -> None:
 
 
 # ===========================================================================
-# 四、谱图找峰
-# ===========================================================================
-
-def test_peaks() -> None:
-    # --- 人造高斯峰：中心 500 nm，宽 20 nm ---
-    def gaussian(x: float, center: float, sigma: float, height: float) -> float:
-        return height * math.exp(-((x - center) ** 2) / (2 * sigma ** 2))
-
-    xs = [400.0 + i for i in range(201)]  # 400 ~ 600 nm
-    ys = [gaussian(x, 500.0, 10.0, 1.0) + 0.01 for x in xs]
-
-    peaks, noise = core.find_peaks(xs, ys)
-    check("找到一个主峰", len(peaks), 1)
-    check("峰位约 500 nm", peaks[0].position, 500.0, 1.5)
-
-    # 高斯峰的半高全宽 FWHM = 2.3548 × σ = 23.548
-    check("FWHM 约 2.355σ", peaks[0].fwhm, 2.3548 * 10.0, 1.5)
-
-    # --- 双峰分辨 ---
-    ys2 = [gaussian(x, 470.0, 6.0, 1.0) + gaussian(x, 530.0, 6.0, 0.6) + 0.01 for x in xs]
-    peaks2, _ = core.find_peaks(xs, ys2)
-    check("找到两个峰", len(peaks2), 2)
-    check("第一峰位置", peaks2[0].position, 470.0, 2.0)
-    check("第二峰位置", peaks2[1].position, 530.0, 2.0)
-
-    # --- 平坦噪声不应报峰 ---
-    flat = [0.5] * 201
-    peaks3, _ = core.find_peaks(xs, flat)
-    check("平坦数据无峰", len(peaks3), 0)
-
-    # --- 异常输入 ---
-    check_raises("点数太少", core.find_peaks, [1, 2, 3], [1, 2, 3])
-    check_raises("x 未排序", core.find_peaks, [5, 4, 3, 2, 1], [1, 2, 3, 4, 5])
-    check_raises("长度不匹配", core.find_peaks, [1, 2, 3, 4, 5], [1, 2, 3])
-
-
-# ===========================================================================
 # 运行全部测试
 # ===========================================================================
 
