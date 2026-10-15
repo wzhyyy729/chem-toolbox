@@ -1,0 +1,32 @@
+# Python 编译产物与缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 打包与虚拟环境
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 测试与类型检查缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 编辑器与系统文件
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 实验产出的临时数据（保留 examples/ 里的示例数据）
+*.tmp
+~$*

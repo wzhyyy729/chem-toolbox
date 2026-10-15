@@ -1,0 +1,12 @@
+# 标准曲线示例数据（人造数据，仅用于演示）
+# 模拟"邻菲罗啉分光光度法测铁"：浓度(mmol/L) → 吸光度
+# 用 stats fit 求斜率和 R²：python -m chem_toolbox stats fit --file examples/standard_curve.csv --x-col 0 --y-col 1
+concentration_mmol_per_l,absorbance
+0.05,0.104
+0.10,0.203
+0.15,0.298
+0.20,0.401
+0.25,0.497
+0.30,0.604
+0.35,0.698
+0.40,0.803

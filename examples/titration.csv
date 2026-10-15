@@ -1,0 +1,9 @@
+# 平行滴定示例数据（人造数据，仅用于演示）
+# 用 stats summary 求平均值和标准差：python -m chem_toolbox stats summary --file examples/titration.csv --x-col 0
+# 第 1 列：消耗 NaOH 体积 mL    第 2 列：平行测定序号
+volume_ml,run
+24.85,1
+24.92,2
+24.78,3
+24.88,4
+24.90,5
